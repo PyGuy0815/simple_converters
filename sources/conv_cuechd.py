@@ -82,7 +82,7 @@ def ask_install_chdman() -> bool:
             return False
 
 def check_chdman():
-    if shutil.which("chdmang"):
+    if shutil.which("chdman"):
         return True
         
     if not ask_install_chdman():
@@ -129,12 +129,12 @@ def check_chdman():
     return True
 
 def is_iso9660(path):
-try:
-    with path.open("rb") as f:
-        f.seek(16 * 2048 + 1)
-        return f.read(5) == b"CD001"
-except OSError:
-    return False        
+    try:
+        with path.open("rb") as f:
+            f.seek(16 * 2048 + 1)
+            return f.read(5) == b"CD001"
+    except OSError:
+        return False        
 
 def is_udf(path):
     try:
