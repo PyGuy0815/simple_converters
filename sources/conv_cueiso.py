@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-conv_cueiso.py [-h] [-i INPUT] [-o OUTPUT] [-d {iso,cue}] [-r] [-f | -a] [path]
+conv_cueiso.py [-h] [-i INPUT] [-o OUTPUT] [-d {iso,cue,bin}] [-r] [-f | -a] [path]
 
 Convert between CUE/BIN and ISO images (data CDs only).
+
+Primary use:
+- CUE/BIN → ISO
+- ISO → CUE/BIN
+
+Explicit conversions:
+- BIN → ISO
 
 Features:
 - Multiple input files via -i (supports wildcards)
@@ -180,12 +187,12 @@ def main():
     )
 
     parser.add_argument("-i", "--input", action="append",
-                        help="Input file(s): ISO or CUE (wildcards allowed)")
+                        help="Input file(s): ISO, CUE or BIN (wildcards allowed)")
 
     parser.add_argument("-o", "--output",
                         help="Output file (single input only)")
 
-    parser.add_argument("-d", "--dir", choices=("iso", "cue"),
+    parser.add_argument("-d", "--dir", choices=("iso", "cue", "bin"),
                         help="Process directory, filter by file type")
 
     parser.add_argument("path", nargs="?",
@@ -220,6 +227,8 @@ def main():
 
     elif args.recursive:
         error("-r can only be used together with -d")
+
+    print(inputs)
 
     if args.input:
         for pattern in args.input:
