@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """
-conv_cueiso.py
+conv_cueiso.py [-h] [-i INPUT] [-o OUTPUT] [-d {iso,cue}] [-r] [-f | -a] [path]
 
 Convert between CUE/BIN and ISO images (data CDs only).
 
 Features:
 - Multiple input files via -i (supports wildcards)
 - Optional output (-o). If omitted, output name is derived from input basename
-- Directory processing (-d) and recursive directory processing (-dr)
+- Directory processing (-d) optional recursive (-r)
 - Force overwrite (-f) or ask before overwrite (-a)
 - Strict but minimal CUE parsing (MODE1 only)
-
 """
+
 EXAMPLES = """
 Examples:
   conv_cueiso.py -i cd.iso
   conv_cueiso.py -i cd_001.cue -i cd_002.cue
   conv_cueiso.py -i cd_game.cue -o game.iso
   conv_cueiso.py -i "*.cue"
-  conv_cueiso.py -dr dumps/ -a
+  conv_cueiso.py -d iso folder/ -a
+  conv_cueiso.py -d cue folder/ -r -f
 """
 
 import os
@@ -55,14 +56,15 @@ def ask_overwrite(path: Path) -> bool:
 
 def check_overwrite(path: Path, force: bool, ask: bool):
     if not path.exists():
-        return
+        return True
     if force:
-        return
+        return True
     if ask:
         if ask_overwrite(path):
-            return
-        error("Operation aborted by user")
-    error(f"{path} already exists (use -f or -a)")
+            return True
+        return False
+    warn(f"{path} already exists (use -f or -a)")
+    return False
 
 
 # ------------------------------------------------------------
@@ -100,7 +102,8 @@ def parse_cue(cue_path: Path):
 # Converters
 # ------------------------------------------------------------
 def bin_to_iso(bin_path: Path, iso_path: Path, sector_size: int, force: bool, ask: bool):
-    check_overwrite(iso_path, force, ask)
+    if not check_overwrite(iso_path, force, ask):
+        return
 
     with bin_path.open("rb") as binf, iso_path.open("wb") as isof:
         while True:
@@ -119,8 +122,8 @@ def bin_to_iso(bin_path: Path, iso_path: Path, sector_size: int, force: bool, as
 def iso_to_bin(iso_path: Path, bin_path: Path, force: bool, ask: bool):
     cue_path = bin_path.with_suffix(".cue")
 
-    check_overwrite(bin_path, force, ask)
-    check_overwrite(cue_path, force, ask)
+    if not check_overwrite(cue_path, force, ask):
+        return
 
     with iso_path.open("rb") as isof, bin_path.open("wb") as binf:
         while True:
