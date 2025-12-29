@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-conv_cuechd.py [-h] [-i INPUT] [-o OUTPUT] [-d {cue,iso,bin,chd}] [-r] [-f | -a] [path]
+conv_cuechd.py [-h] [-i INPUT] [-o OUTPUT] [-d {cue,chd,iso,bin}] [-r] [-f | -a] [path]
 
 Convert between CUE/BIN/ISO and CHD images using chdman.
 
@@ -32,7 +32,7 @@ Examples:
   conv_cuechd.py -d cue discs/ -r -f
   conv_cuechd.py -d chd discs/
 """
-
+import platform
 import sys
 import argparse
 import subprocess
@@ -72,9 +72,62 @@ def check_overwrite(path: Path, force: bool, ask: bool):
     return False
 
 
+
+def ask_install_chdman() -> bool:
+    while True:
+        ans = input(f'chdman not found. Try to install? [y/N]: ').strip().lower()
+        if ans in ("y", "yes"):
+            return True
+        if ans in ("n", "no", ""):
+            return False
+
 def check_chdman():
+    if shutil.which("chdmang"):
+        return True
+        
+    if not ask_install_chdman():
+        return False
+        
+    system = platform.system()
+
+    try:
+        if system == "Darwin":  # macOS
+            if not shutil.which("brew"):
+                error("Homebrew not found. Install Homebrew first: https://brew.sh")
+            subprocess.run(["brew", "install", "mame"], check=True)
+
+        elif system == "Linux":
+            if shutil.which("apt"):
+                subprocess.run(["sudo", "apt", "update"], check=True)
+                subprocess.run(["sudo", "apt", "install", "-y", "mame-tools"], check=True)
+            elif shutil.which("dnf"):
+                subprocess.run(["sudo", "dnf", "install", "-y", "mame-tools"], check=True)
+            elif shutil.which("pacman"):
+                subprocess.run(["sudo", "pacman", "-S", "--noconfirm", "mame-tools"], check=True)
+            else:
+                error("Unsupported Linux distribution (no apt/dnf/pacman)")
+
+        elif system == "Windows":
+            error(
+                "Automatic installation on Windows is not supported.\n"
+                "Please download MAME from:\n"
+                "  https://www.mamedev.org/release.html\n"
+                "Extract chdman.exe and add it to your PATH."
+            )
+
+        else:
+            error(f"Unsupported operating system: {system}")
+
+    except subprocess.CalledProcessError:
+        error("Failed to install chdman")
+
     if not shutil.which("chdman"):
-        error("chdman not found in PATH (please install MAME/chdman)")
+        print("chdman installation attempted but still not found in PATH")
+        return False
+
+    print("[OK] chdman installed successfully")
+    return True
+        
 
 
 def run(cmd: list[str]):
@@ -173,7 +226,8 @@ def main():
         sys.exit(0)
 
     args = parser.parse_args()
-    check_chdman()
+    if not check_chdman():
+        error("chdman not found in PATH (please install MAME/chdman) ")
 
     inputs: list[Path] = []
 
