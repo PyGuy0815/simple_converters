@@ -127,8 +127,36 @@ def check_chdman():
 
     print("[OK] chdman installed successfully")
     return True
-        
 
+def is_iso9660(path):
+try:
+    with path.open("rb") as f:
+        f.seek(16 * 2048 + 1)
+        return f.read(5) == b"CD001"
+except OSError:
+    return False        
+
+def is_udf(path):
+    try:
+        with path.open("rb") as f:
+            # Anchor Volume Descriptor Pointer @ sector 256
+            f.seek(256 * 2048)
+            data = f.read(512)
+            if b"NSR02" in data or b"NSR03" in data:
+                return True
+
+            # Backup AVDP near end of medium
+            size = path.stat().st_size
+            last_sector = (size // 2048) - 256
+            if last_sector > 0:
+                f.seek(last_sector * 2048)
+                data = f.read(512)
+                if b"NSR02" in data or b"NSR03" in data:
+                    return True
+    except OSError:
+        pass
+
+    return False
 
 def run(cmd: list[str]):
     try:
@@ -143,10 +171,21 @@ def run(cmd: list[str]):
 def to_chd(inp: Path, out: Path, force: bool, ask: bool):
     if not check_overwrite(out, force, ask):
         return
-
+        
+    ext = inp.suffix.lower()
+    
+    action = "createcd"
+    
+    if ext == ".iso":
+        if is_udf(path):
+            action = "createdvd"
+            warn("ISO is UFD DVD")
+        elif not is_iso9660(path):
+            warn("ISO is not 9660")
+    
     cmd = [
         "chdman",
-        "createcd",
+        action,
         "-i", str(inp),
         "-o", str(out)
     ]
